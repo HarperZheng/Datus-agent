@@ -13,7 +13,7 @@
 
 3. **`docs/getting_started/contextual_data_engineering.zh.md`** —— 端到端实战教程：从建库到"通过校验的 Dosi YAML 写入 `subject/semantic_models/`"的完整流程。
 
-4. **`docs/knowledge_base/semantic_model.zh.md`** —— 语义模型结构：模型 / dataset / field / relationship / metric 各自的作用。模型文件存放路径为 `subject/semantic_models/<datasource>/<模型名>.yml`（本项目即 `subject/semantic_models/yunnan0508/`）。
+4. **`docs/knowledge_base/semantic_model.zh.md`** —— 语义模型结构：模型 / dataset / field / relationship / metric 各自的作用。模型文件存放路径为 `subject/semantic_models/<datasource>/<模型名>.yml`（本项目即 `subject/semantic_models/fujian1105/`）。
 
 5. **`docs/knowledge_base/metrics.zh.md`** —— 指标定义规范：name、expression、三级 subject_path 分类、时间维度、窗口行为等字段。
 
@@ -27,6 +27,6 @@
 
 ## 实操提示
 
-- 建模不需要手写 YAML：在 Web 界面（`http://<服务器IP>:8501`）里让 `semantic_modeling` 子代理对照上面第 1 项材料和 fujian 库的真实表结构建模，产出自动落到 `subject/semantic_models/yunnan0508/` 并同步 Knowledge Base。
+- 建模不需要手写 YAML：在 Web 界面（`http://<服务器IP>:8501`）里让 `semantic_modeling` 子代理对照上面第 1 项材料和 fujian 库的真实表结构建模，产出自动落到 `subject/semantic_models/fujian1105/` 并同步 Knowledge Base。
 - 建模时喂给 semantic_modeling 的材料用 `modeling-input/` 的 md（按数据集批次：00 规则 + 对应白名单 + 05 指标清单）；xlsx 源文件与 md 派生物的同步靠 `nontax_product/scripts/export_design_manual.py`。
 - 已知限制：建模后的校验环节会调用 `query_metrics`，而部署文档（`nontax_product/docs/Datus Agent 可编辑部署步骤（含数据库连接测试）.md`）附录 Bug 2（dosi-engine 在 ClickHouse 23.3 上报 `Code 115 UNKNOWN_SETTING`）尚未修复，校验会因此失败。普通 SQL 问答和 `validate_semantic` 结构校验不受影响；Bug 2 修复完成前，指标执行校验环节会被挡住。

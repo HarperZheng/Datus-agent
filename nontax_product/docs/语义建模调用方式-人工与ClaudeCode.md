@@ -1,8 +1,8 @@
 # 语义建模调用方式：人工与 Claude Code
 
-> 前置：Web 服务已启动（`uv run datus --web --datasource yunnan0508 --host 0.0.0.0`，端口 8501，见部署文档第 8 章）。
-> 建模材料：`nontax_product/docs/modeling-input/`（设计手册 md 版，7 个文件：规则 + 三个数据集字段白名单 + 对齐关系 + 指标清单 + 黑名单）；配套口径与场景见同目录的知识、需求两份 md。xlsx 源文件改动后重跑 `nontax_product/scripts/export_design_manual.py` 再生成。
-> 产出自动落盘：`subject/semantic_models/yunnan0508/<模型名>.yml`，并同步 Knowledge Base。
+> 前置：Web 服务已启动（`uv run datus --web --datasource fujian1105 --host 0.0.0.0`，端口 8501，见部署文档第 8 章）。
+> 建模材料：`nontax_product/docs/modeling-input/`（设计手册 md 版，7 个文件：规则 + 三个数据集字段白名单 + 对齐关系 + 指标清单 + 黑名单；xlsx 源文件改动后重跑 `nontax_product/scripts/export_design_manual.py` 再生成）；配套口径与场景见同目录的知识、需求两份 md；Claude Code 指挥批量建模时先读同目录 `07-建模任务书与验收单.md`（指挥层不变量：环境锚点、验收单、硬约束红线、拆解原则、职责边界）。
+> 产出自动落盘：`subject/semantic_models/fujian1105/<模型名>.yml`，并同步 Knowledge Base。
 
 ## 一、人工调用（推荐用于交互式建模、口径反复核对）
 
@@ -27,7 +27,7 @@ Datus 提供三条被外部程序指挥的通道：
    ```bash
    uv run datus -p "为 fujian1105 建 fab_item 的语义模型，先 describe_table 看字段，定义 dataset 和两个指标：月支付金额总额、支付笔数" \
      --subagent semantic_modeling \
-     --datasource yunnan0508 \
+     --datasource fujian1105 \
      --permission-mode auto
    ```
 

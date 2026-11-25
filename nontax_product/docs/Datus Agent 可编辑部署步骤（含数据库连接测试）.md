@@ -102,7 +102,7 @@ EOF
 ```yaml
 services:
   datasources:
-    yunnan0508:
+    fujian1105:
       type: clickhouse
       host: 172.18.166.126
       port: 8123
@@ -124,7 +124,7 @@ services:
 
 ```bash
 cd <path>/Datus-agent
-uv run datus-agent check-db --datasource yunnan0508
+uv run datus-agent check-db --datasource fujian1105
 ```
 
 项目内置的连通性检查子命令：加载 `agent.yml` → 初始化 Agent → 对目标数据源执行 `test_connection`，成功输出 `Database connection test successful`，失败按输出排查地址/端口/凭据/防火墙。该命令会完整初始化 Agent，等于顺带验证了整份配置（含 LLM provider）。
@@ -149,13 +149,13 @@ uv sync --no-dev            # 仅 uv.lock 变化时才真正装东西；--no-dev
 
 ```bash
 cd <path>/Datus-agent
-uv run datus --web --datasource yunnan0508 --host 0.0.0.0
+uv run datus --web --datasource fujian1105 --host 0.0.0.0
 ```
 
 - 数据源密码已写在 `conf/agent.yml` 中，无需额外环境变量，直接启动即可
 - 启动成功标志：日志出现 `Uvicorn running on http://0.0.0.0:8501`
 - 默认端口 **8501**；`--host 0.0.0.0` 允许局域网其他机器通过服务器 IP 访问——**不加这个参数只能本机访问**（默认绑 127.0.0.1）
-- 临时后台运行：`nohup uv run datus --web --datasource yunnan0508 --host 0.0.0.0 &` 或放进 tmux；systemd 常驻按"范围说明"另定
+- 临时后台运行：`nohup uv run datus --web --datasource fujian1105 --host 0.0.0.0 &` 或放进 tmux；systemd 常驻按"范围说明"另定
 
 ### 访问与验证（三步，从浅到深）
 
@@ -205,9 +205,12 @@ uv run datus --web --datasource yunnan0508 --host 0.0.0.0
 
 ### Bug 2：query_metrics 报 Code 115 UNKNOWN_SETTING
 
-- **触发**：dosi-engine 执行 query_metrics
-- **现象**：`Code 115: Unknown setting session_timezone (UNKNOWN_SETTING)`
-- **原因**：dosi-engine 0.1.13（Rust 原生扩展）执行 SQL 前硬编码追加 `SETTINGS session_timezone = 'UTC'`；该设置 ClickHouse 23.5 才引入，23.3 按设置名直接拒绝，与值无关（改时区无效）
-- **定位**：二进制分析 `_native.abi3.so` 确认：值是写死的常量，dosi-engine 不读系统时区；`dry_run` 只编译不执行，所以测不出该问题
-- **修复**：尚未实现。此前记录的实现（`dosi/engine.py` 挂兼容切面 + `ch_compat.py` 进程内反代）未进入当前 separate_treasury_dataset 分支，待按原设计重新实现：非本机 CH 连接时 dosi 的 HTTP 流量改走进程内反代（`ch_compat.py`，127.0.0.1 临时端口 daemon 线程），转发时剥掉 URL 里的 `session_timezone` 参数、把 body 里的 `dateTrunc('month',col)` 改写为 `toStartOfMonth(col)` 等 23.3 兼容函数
-- **现状**：修复待实现，实现后需在真机 CH（172.18.166.126）完成三基准值验证
+- **触发**：dosi-engine 一切真实执行路径（`execute`/`select`，含 query_metrics；dry run 不触发）
+- **现象**：`Code: 115. DB::Exception: Unknown setting session_timezone. (UNKNOWN_SETTING)`（HTTP 404 包装）
+- **原因**：dosi-engine（Rust 原生扩展）执行 SQL 前硬编码追加 `SETTINGS session_timezone = 'UTC'`；该设置 ClickHouse 23.5 才引入，23.3 按设置名直接拒绝，与值无关（改时区无效）
+- **定位**：二进制分析 `_native.abi3.so` 确认：值是写死的常量，dosi-engine 不读系统时区；注入发生在执行阶段、不体现在编译产物里——`compile` 生成的 SQL 只有 `SETTINGS join_use_nulls = 1`，所以 dry_run 测不出该问题
+- **存在性验证**（2026-11-25，dosi-engine **0.2.2** + CH 23.3.15.29 实测，问题依旧、上游未修）：
+  1. 静态：`grep session_timezone .venv/lib/python3.12/site-packages/dosi_engine/_native.abi3.so` 有命中
+  2. 复现：最小语义模型（单 dataset `fujian1105.fne_paybook_full_high` + 指标 `COUNT(DISTINCT fpaycode)`）经 `dosi_engine.Engine(model_text=..., connections=...)` 构造后，`compile_select`/`compile`（dry run）成功、`select`/`execute` 真执行即报 Code 115——编译产物不含该设置、执行阶段注入，复现脚本与方法以此段为准
+- **修复**：尚未实现。按原设计重新实现：非本机 CH 连接时 dosi 的 HTTP 流量改走进程内反代（`ch_compat.py`，127.0.0.1 临时端口 daemon 线程），转发时剥掉 URL 里的 `session_timezone` 参数、把 body 里的 `dateTrunc('month',col)` 改写为 `toStartOfMonth(col)` 等 23.3 兼容函数
+- **现状**：存在性已实测确认（0.2.2）；修复待实现，实现后以同一复现脚本验证 `execute` 由 Code 115 变为成功返回，再在真机 CH（172.18.166.126）完成三基准值验证

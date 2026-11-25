@@ -14,6 +14,7 @@ from weakref import finalize
 from datus_db_core import BaseSqlConnector, ConnectionConfig, DatusDbException, connector_registry
 from sqlalchemy.engine.url import URL, make_url
 
+from datus.compat.clickhouse_233 import ensure_clickhouse_233_compat
 from datus.configuration.agent_config import DbConfig, file_stem_from_uri
 from datus.schemas.database_context import DatabaseExecutionContext
 from datus.tools.db_tools.config import DuckDBConfig, SQLiteConfig
@@ -618,7 +619,13 @@ class DBManager:
         db_type = _normalize_dialect_name(db_config.type)
         if not connector_registry.is_registered(db_type):
             _auto_install_adapter(db_type)
-        return connector_registry.create_connector(db_config.type, connection_config)
+        conn = connector_registry.create_connector(db_config.type, connection_config)
+        # ClickHouse 23.3 元数据 SQL 兼容：这里是所有连接器创建的唯一出口，
+        # 挂这一处即可覆盖 check-db / REPL / 补全同步等全部路径。
+        # ensure_* 幂等且带版本门控：老版本 CH 才替换函数，新版本原样放行。
+        if db_type == "clickhouse":
+            ensure_clickhouse_233_compat(conn)
+        return conn
 
     def _db_config_to_connection_config(self, db_config: DbConfig) -> Union[ConnectionConfig, dict]:
         """Convert DbConfig to appropriate ConnectionConfig subclass or dict.

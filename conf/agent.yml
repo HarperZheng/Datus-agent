@@ -292,7 +292,7 @@ agent:
         host: 172.18.166.126
         port: 8123
         username: fujian1105
-        password: "${CLICKHOUSE_PASSWORD}"   # actual value via env var, never in repo
+        password: "Bstdb@2026#"   # actual value via env var, never in repo
         database: fujian1105
       snowflake:
         type: snowflake

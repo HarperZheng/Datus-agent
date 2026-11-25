@@ -212,5 +212,5 @@ uv run datus --web --datasource fujian1105 --host 0.0.0.0
 - **存在性验证**（2026-11-25，dosi-engine **0.2.2** + CH 23.3.15.29 实测，问题依旧、上游未修）：
   1. 静态：`grep session_timezone .venv/lib/python3.12/site-packages/dosi_engine/_native.abi3.so` 有命中
   2. 复现：最小语义模型（单 dataset `fujian1105.fne_paybook_full_high` + 指标 `COUNT(DISTINCT fpaycode)`）经 `dosi_engine.Engine(model_text=..., connections=...)` 构造后，`compile_select`/`compile`（dry run）成功、`select`/`execute` 真执行即报 Code 115——编译产物不含该设置、执行阶段注入，复现脚本与方法以此段为准
-- **修复**：尚未实现。按原设计重新实现：非本机 CH 连接时 dosi 的 HTTP 流量改走进程内反代（`ch_compat.py`，127.0.0.1 临时端口 daemon 线程），转发时剥掉 URL 里的 `session_timezone` 参数、把 body 里的 `dateTrunc('month',col)` 改写为 `toStartOfMonth(col)` 等 23.3 兼容函数
-- **现状**：存在性已实测确认（0.2.2）；修复待实现，实现后以同一复现脚本验证 `execute` 由 Code 115 变为成功返回，再在真机 CH（172.18.166.126）完成三基准值验证
+- **修复**（2026-11-25 已实现）：进程内 HTTP 反向代理，代码在二开分支的 `datus/compat/clickhouse_233_proxy.py`，挂钩 `dosi/engine.py::_runtime_connections`。门控顺序：`DATUS_CH_COMPAT=off` 直连 → 非 clickhouse/本机地址直连 → 版本探测 ≥23.5 直连 → **<23.5 时把引擎连接的 host/port 换成 127.0.0.1 本地反代**（daemon 线程，按上游地址幂等缓存）。转发前改写：剥 URL 里的 `session_timezone` 参数、剥离 body SQL 的 SETTINGS 中该设置项、`dateTrunc('unit',x)` 按映射表替换为 `toStartOfMonth(x)` 等等价函数，其余请求/响应原样透传
+- **现状**：已修复并实测——同一复现场景 `execute` 由 Code 115 变为成功返回（row_count=1，经反代转发真 CH）；单测 31 项覆盖改写/透传/门控各分支（mock 上游，CI 可跑）。三基准值报表核对随建模校验进行

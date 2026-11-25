@@ -19,6 +19,7 @@ from typing import Any, Optional
 
 import yaml
 
+from datus.compat.clickhouse_233_proxy import ensure_clickhouse_233_proxy
 from datus.tools.semantic_tools.dosi.config import DosiConfig
 from datus.tools.semantic_tools.dosi.dialects import normalize_dialect
 from datus.tools.semantic_tools.dosi.model import (
@@ -664,6 +665,10 @@ class EngineHandle:
         if dialect:
             entry["type"] = dialect
         entry.setdefault("default", True)
+        if (dialect or "").lower() == "clickhouse":
+            # ClickHouse <23.5 HTTP 兼容（部署文档附录 Bug 2）：必要且启用时把
+            # 引擎连接指向本地反代（版本门控/环境变量开关在 compat 模块内）。
+            entry = ensure_clickhouse_233_proxy(entry)
         return {self.profile_name or "default": entry}
 
 

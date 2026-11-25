@@ -1,7 +1,7 @@
 # 语义建模调用方式：人工与 Claude Code
 
 > 前置：Web 服务已启动（`uv run datus --web --datasource yunnan0508 --host 0.0.0.0`，端口 8501，见部署文档第 8 章）。
-> 建模材料：`nontax_product/docs/语义层建模设计手册-国库独立-fujian.xlsx`（xlsx 是二进制，agent 读不了，需整理成 md/txt 放进项目目录或直接粘贴在消息里）。
+> 建模材料：`nontax_product/docs/modeling-input/`（设计手册 md 版，7 个文件：规则 + 三个数据集字段白名单 + 对齐关系 + 指标清单 + 黑名单）；配套口径与场景见同目录的知识、需求两份 md。xlsx 源文件改动后重跑 `nontax_product/scripts/export_design_manual.py` 再生成。
 > 产出自动落盘：`subject/semantic_models/yunnan0508/<模型名>.yml`，并同步 Knowledge Base。
 
 ## 一、人工调用（推荐用于交互式建模、口径反复核对）
